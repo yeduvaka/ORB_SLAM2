@@ -23,6 +23,7 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
+#include<iomanip>
 
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -32,6 +33,8 @@
 #include"../../../include/System.h"
 
 using namespace std;
+
+bool firstframe = true;
 
 class ImageGrabber
 {
@@ -43,10 +46,13 @@ public:
     ORB_SLAM2::System* mpSLAM;
 };
 
+
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Mono");
     ros::start();
+
 
     if(argc != 3)
     {
@@ -63,13 +69,15 @@ int main(int argc, char **argv)
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
+
+
     ros::spin();
 
     // Stop all threads
     SLAM.Shutdown();
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrame-test.txt");
 
     ros::shutdown();
 
@@ -88,6 +96,18 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
+    }
+    if (firstframe) {
+        ofstream f;
+        f.open("KeyFrame-test.txt",std::ios_base::app | std::ios_base::out);
+        f << fixed;
+        f << "################################################## \n";
+
+        f << setprecision(6) << cv_ptr->header.stamp.toSec() << setprecision(6) << " " << -1.000 << " " << -1.000 << " " << -1.000 << "\n";
+        f << setprecision(6) << cv_ptr->header.stamp.toSec() << setprecision(6) << " " << -1.000 << " " << -1.000 << " " << -1.000 << endl;
+        f.close();
+        cout << endl << "Start time saved!" << endl;
+        firstframe = false;
     }
 
     mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
