@@ -19,22 +19,26 @@
 */
 
 
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
-#include<iomanip>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
+#include <iomanip>
+#include <time.h>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
+#include <ros/callback_queue.h>
 
-#include<opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 
-#include"../../../include/System.h"
+#include "../../../include/System.h"
 
 using namespace std;
 
 bool firstframe = true;
+time_t now = time(NULL);
+time_t last = time(NULL);
 
 class ImageGrabber
 {
@@ -70,9 +74,18 @@ int main(int argc, char **argv)
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
 
-
-    ros::spin();
-
+    ros::NodeHandle n;
+    last = time(NULL);
+    while (ros::ok())
+    { 
+        ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+        now = time(NULL);
+        if ((double(now-last) > 5) && !firstframe)
+        {
+            cout << now-last; 
+            break;
+        }
+    }
     // Stop all threads
     SLAM.Shutdown();
 
@@ -109,7 +122,7 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cout << endl << "Start time saved!" << endl;
         firstframe = false;
     }
-
+    last = time(NULL);
     mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
 }
 
